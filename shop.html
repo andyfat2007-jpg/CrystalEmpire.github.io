@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>МАГАЗИН О.И.Д.Л. · КРИСТАЛЬНАЯ ИМПЕРИЯ</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #020510; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: 'Courier New', 'VT323', monospace; position: relative; overflow-x: hidden;
+    }
+
+    body::before {
+      content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0px, rgba(0,20,0,0.2) 3px, rgba(0,255,0,0.02) 4px, transparent 5px);
+      pointer-events: none; z-index: 100; animation: scan 10s linear infinite; opacity: 0.7;
+    }
+
+    body.desktop { padding: 16px; }
+    body.mobile { padding: 0; }
+    @keyframes scan { 0% { background-position: 0 0; } 100% { background-position: 0 20px; } }
+
+    .terminal {
+      background-color: #0a0e1c; display: flex; flex-direction: column; position: relative; z-index: 20;
+    }
+    body.desktop .terminal {
+      max-width: 1000px; width: 100%; border: 4px solid #1a6e1a;
+      box-shadow: 0 0 0 2px #0d2b10, 0 0 20px #00aa33 inset, 0 0 30px rgba(0,255,80,0.3);
+      border-radius: 12px 12px 20px 20px; padding: 0 0 6px 0;
+    }
+    body.mobile .terminal { width: 100%; min-height: 100vh; border: none; }
+
+    .terminal-header {
+      background: #050a1a; border-bottom: 2px solid #1a6e1a;
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 18px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+
+    .shop-icon {
+      width: 44px; height: 44px; position: relative;
+      background: #0a1a0a; border: 3px solid #33aa33;
+      box-shadow: 0 0 15px #33aa33;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+    }
+    body.mobile .shop-icon { width: 34px; height: 34px; font-size: 1.4rem; }
+
+    .header-title { font-weight: bold; letter-spacing: 3px; color: #33aa33; text-shadow: 0 0 10px #33aa33; font-family: 'VT323', monospace; }
+    body.desktop .header-title { font-size: 1.3rem; }
+    body.mobile .header-title { font-size: 1rem; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .back-btn {
+      background: #0a1a0a; border: 2px solid #33aa33; color: #33aa33;
+      font-family: 'Courier New', monospace; font-size: 0.85rem; padding: 6px 14px;
+      cursor: pointer; text-decoration: none; text-transform: uppercase;
+    }
+
+    .admin-shop-btn {
+      background: #1a0020; border: 2px solid #ff4444; color: #ff4444;
+      font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 6px 12px;
+      cursor: pointer; text-transform: uppercase; display: inline-block;
+    }
+
+    .screen {
+      color: #88cc88; text-shadow: 0 0 6px rgba(0,200,0,0.3);
+      background: #03081a; font-size: 0.95rem; line-height: 1.4;
+      padding: 20px 18px; flex: 1; overflow-y: auto;
+    }
+
+    .shop-title { 
+      text-align: center; color: #33aa33; font-size: 1.4rem; font-family: 'VT323', monospace; 
+      letter-spacing: 3px; margin-bottom: 8px; 
+    }
+    .shop-subtitle { text-align: center; color: #1a6e1a; font-size: 0.8rem; margin-bottom: 20px; }
+
+    .caps-display {
+      text-align: center; color: #ffdd44; font-size: 1.2rem; margin-bottom: 20px;
+      border: 2px solid #1a6e1a; padding: 10px; background: #050a1a;
+    }
+
+    .shop-item {
+      border: 2px solid #1a6e1a; background: #050a1a; padding: 14px; margin: 10px 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .item-info { flex: 1; }
+    .item-name { color: #66dd66; font-size: 1.1rem; }
+    .item-price { color: #33aa33; font-size: 0.9rem; }
+    .item-stock { color: #1a6e1a; font-size: 0.8rem; }
+    .buy-btn {
+      background: #0a1a0a; border: 2px solid #33aa33; color: #33aa33;
+      padding: 10px 18px; cursor: pointer; font-family: inherit; font-size: 0.9rem; text-transform: uppercase;
+    }
+    .buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .delivery-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9); z-index: 400;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .delivery-overlay.hidden { display: none; }
+
+    .delivery-window {
+      background: #0a0e1c; border: 3px solid #33aa33;
+      box-shadow: 0 0 30px rgba(0,255,80,0.3), inset 0 0 20px #000;
+      padding: 25px 20px; max-width: 500px; width: 90%;
+    }
+    .delivery-title {
+      color: #33aa33; font-size: 1.3rem; text-align: center;
+      font-family: 'VT323', monospace; letter-spacing: 2px;
+      border-bottom: 2px solid #1a6e1a; padding-bottom: 10px; margin-bottom: 20px;
+    }
+    .delivery-item-name { color: #66dd66; font-size: 1rem; text-align: center; margin-bottom: 20px; }
+    .delivery-options { display: flex; flex-direction: column; gap: 10px; }
+    .delivery-option {
+      border: 2px solid #1a6e1a; background: #050a1a; padding: 14px;
+      cursor: pointer; color: #88cc88; display: flex; justify-content: space-between; align-items: center;
+    }
+    .delivery-option:hover { border-color: #33aa33; background: #0a1a0a; }
+    .delivery-option-name { color: #66dd66; font-size: 1rem; }
+    .delivery-option-desc { color: #1a6e1a; font-size: 0.8rem; }
+    .delivery-option-price { color: #33aa33; font-weight: bold; }
+    .delivery-cancel {
+      background: #1a0020; border: 2px solid #1a6e1a; color: #1a6e1a;
+      padding: 12px; cursor: pointer; font-family: inherit; text-transform: uppercase;
+      text-align: center; margin-top: 10px;
+    }
+
+    .admin-panel {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95); z-index: 300;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .admin-panel.hidden { display: none; }
+
+    .admin-window {
+      background: #050a1a; border: 2px solid #ff4444; overflow-y: auto;
+    }
+    body.desktop .admin-window { max-width: 600px; width: 95%; max-height: 90vh; padding: 25px 30px; }
+    body.mobile .admin-window { width: 100%; height: 100%; padding: 20px 14px; }
+
+    .admin-header { border-bottom: 2px solid #ff4444; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .admin-title { font-size: 1.4rem; color: #ff4444; text-transform: uppercase; letter-spacing: 3px; font-family: 'VT323', monospace; }
+    .admin-close { background: none; border: 2px solid #ff4444; color: #ff4444; font-size: 1.5rem; width: 44px; height: 44px; cursor: pointer; text-align: center; line-height: 40px; }
+
+    .admin-input { width: 100%; background: #050a1a; border: 2px solid #ff4444; color: #ff8888; padding: 10px; font-family: 'Courier New', monospace; font-size: 0.95rem; outline: none; margin: 5px 0; }
+
+    .admin-btn { background: #1a0020; border: 2px solid #ff4444; color: #ff6666; padding: 10px 16px; font-family: inherit; font-size: 0.9rem; text-transform: uppercase; cursor: pointer; margin: 4px; }
+    .admin-btn.save-btn { border-color: #44ff44; color: #44ff44; background: #002200; width: 100%; }
+
+    .admin-list { max-height: 200px; overflow-y: auto; border: 1px solid #ff4444; padding: 8px; margin: 8px 0; }
+    .admin-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 6px; border-bottom: 1px dotted #552222; color: #ffaaaa; font-size: 0.9rem; }
+    .admin-list-item button { background: #330000; border: 1px solid #ff4444; color: #ff4444; padding: 6px 12px; cursor: pointer; font-family: inherit; font-size: 0.8rem; margin-left: 3px; }
+
+    .history-section { margin-top: 30px; border-top: 2px solid #1a6e1a; padding-top: 15px; }
+    .history-title { color: #33aa33; font-size: 1rem; font-family: 'VT323', monospace; letter-spacing: 2px; margin-bottom: 10px; }
+    .history-item { border: 1px solid #1a3a1a; background: #050a1a; padding: 8px 12px; margin: 5px 0; font-size: 0.8rem; color: #1a6e1a; }
+
+    .terminal-footer { padding: 10px 14px; display: flex; justify-content: space-between; color: #1a6e1a; background: #020510; border-top: 1px solid #0d1b40; font-size: 0.7rem; text-transform: uppercase; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="terminal">
+  <div class="terminal-header">
+    <div class="header-left">
+      <div class="shop-icon">🏪</div>
+      <div>
+        <div class="header-title">МАГАЗИН О.И.Д.Л.</div>
+        <div style="color:#1a6e1a;font-size:0.65rem;letter-spacing:2px;">ОФИЦИАЛЬНЫЙ ПРЕДСТАВИТЕЛЬ</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="admin-shop-btn" id="adminShopBtn">◈ РЕДАКТИРОВАТЬ</button>
+      <a href="index.html" class="back-btn">◄ ТЕРМИНАЛ</a>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="shop-title">◆ О.И.Д.Л. - ТОРГОВЫЙ ПРЕДСТАВИТЕЛЬ ◆</div>
+    <div class="shop-subtitle">ОФИЦИАЛЬНЫЕ ТОВАРЫ О.И.Д.Л. ДЛЯ КРИСТАЛЬНОЙ ИМПЕРИИ</div>
+    
+    <div class="caps-display" id="capsDisplay">💳 БАЛАНС: 0 крышек</div>
+    
+    <div id="shopItems"></div>
+
+    <div class="history-section" id="historySection" style="display:none;">
+      <div class="history-title">📋 ИСТОРИЯ ПОКУПОК</div>
+      <div id="purchaseHistory"></div>
+    </div>
+  </div>
+
+  <div class="delivery-overlay hidden" id="deliveryOverlay">
+    <div class="delivery-window">
+      <div class="delivery-title">🚚 СПОСОБ ДОСТАВКИ</div>
+      <div class="delivery-item-name" id="deliveryItemName"></div>
+      <div class="delivery-options">
+        <div class="delivery-option" onclick="selectDelivery('member')">
+          <div><div class="delivery-option-name">👤 УЧАСТНИК О.И.Д.Л.</div><div class="delivery-option-desc">Лично в руки • Бесплатно</div></div>
+          <div class="delivery-option-price">БЕСПЛАТНО</div>
+        </div>
+        <div class="delivery-option" onclick="selectDelivery('drone')">
+          <div><div class="delivery-option-name">🚁 ДРОН-КУРЬЕР</div><div class="delivery-option-desc">Доставка дроном • 5 крышек</div></div>
+          <div class="delivery-option-price">+5 кр.</div>
+        </div>
+        <div class="delivery-option" onclick="selectDelivery('mercenary')">
+          <div><div class="delivery-option-name">🗡 ТИХАЯ ЛАГУНА</div><div class="delivery-option-desc">Сопровождение наёмником • 15 крышек</div></div>
+          <div class="delivery-option-price">+15 кр.</div>
+        </div>
+      </div>
+      <button class="delivery-cancel" onclick="cancelDelivery()">✕ ОТМЕНА</button>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="admin-panel hidden">
+    <div class="admin-window">
+      <div class="admin-header"><div class="admin-title">РЕДАКТИРОВАНИЕ</div><button class="admin-close" id="adminClose">✕</button></div>
+      <div class="admin-list" id="adminShopList"></div>
+      <hr style="border-color:#552222;margin:10px 0;">
+      <input type="text" class="admin-input" id="itemName" placeholder="НАЗВАНИЕ">
+      <input type="text" class="admin-input" id="itemEmoji" placeholder="ЭМОДЗИ">
+      <input type="number" class="admin-input" id="itemPrice" placeholder="ЦЕНА">
+      <input type="number" class="admin-input" id="itemStock" placeholder="СКЛАД (0=∞)">
+      <input type="hidden" id="itemEditIdx" value="-1">
+      <button class="admin-btn save-btn" id="itemSaveBtn">■ СОХРАНИТЬ</button>
+    </div>
+  </div>
+
+  <div class="terminal-footer"><span>МАГАЗИН О.И.Д.Л. v.1.0</span><span>К.И.</span></div>
+</div>
+
+<script>
+  const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768;
+  document.body.className = isMobile ? 'mobile' : 'desktop';
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyCAfEXo57oLviomSjUm4dC23-uHTS11HHU",
+    authDomain: "oidl-rule.firebaseapp.com",
+    databaseURL: "https://oidl-rule-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "oidl-rule",
+    storageBucket: "oidl-rule.firebasestorage.app",
+    messagingSenderId: "46225230611",
+    appId: "1:46225230611:web:68d83e70c36b72c120e8e6",
+    measurementId: "G-C8023G53PN"
+  });
+  const db = firebase.database();
+
+  // Товары О.И.Д.Л. для К.И.
+  const DEFAULT_SHOP = [
+    { name: "СТИМПАК О.И.Д.Л.", emoji: "💉", price: 25, stock: 0 },
+    { name: "АНТИРАДИН О.И.Д.Л.", emoji: "☢", price: 30, stock: 0 },
+    { name: "ПАТРОНЫ О.И.Д.Л. (10 шт)", emoji: "🔫", price: 15, stock: 0 },
+    { name: "НАБОР ДЛЯ РЕМОНТА О.И.Д.Л.", emoji: "🔧", price: 50, stock: 0 },
+    { name: "СУХПАЁК О.И.Д.Л.", emoji: "🥫", price: 10, stock: 0 },
+    { name: "БАТАРЕЙКА О.И.Д.Л.", emoji: "🔋", price: 20, stock: 0 },
+    { name: "КАРТА СЕКТОРА (О.И.Д.Л.)", emoji: "🗺", price: 40, stock: 0 },
+    { name: "НАБОР СВЯЗИСТА О.И.Д.Л.", emoji: "📡", price: 60, stock: 0 }
+  ];
+
+  const ADMIN_CODE = 'crystal';
+  let shopItems = [], wallets = {}, purchaseHistory = [], isShopAdmin = false, pendingPurchaseItem = null;
+
+  function checkUserStatus() {
+    const stored = localStorage.getItem('ki_current_user');
+    if (stored === 'ГОСТЬ') return 'ГОСТЬ';
+    if (stored) return stored;
+    return null;
+  }
+
+  function loadData() {
+    db.ref('ki_shop_items').on('value', sn => { shopItems = sn.exists() ? sn.val() : [...DEFAULT_SHOP]; renderShop(); });
+    db.ref('ki_wallets').on('value', sn => { wallets = sn.exists() ? sn.val() : {}; renderShop(); });
+    db.ref('ki_purchaseHistory').on('value', sn => { purchaseHistory = sn.exists() ? sn.val() : []; renderHistory(); });
+  }
+
+  function renderShop() {
+    const container = document.getElementById('shopItems');
+    const capsDisplay = document.getElementById('capsDisplay');
+    const historySection = document.getElementById('historySection');
+    
+    const currentUser = checkUserStatus();
+    const isRealUser = currentUser && currentUser !== 'ГОСТЬ';
+    const caps = isRealUser ? (wallets[currentUser] || 0) : 0;
+    
+    capsDisplay.textContent = isRealUser ? '💳 БАЛАНС: ' + caps + ' крышек (К.И.)' : 
+      (currentUser === 'ГОСТЬ' ? '⚠ ГОСТЬ — ПОКУПКИ НЕДОСТУПНЫ' : '🔒 ВОЙДИТЕ В ТЕРМИНАЛ');
+    historySection.style.display = isRealUser ? 'block' : 'none';
+
+    container.innerHTML = '';
+    shopItems.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      const stockText = item.stock > 0 ? ` | В НАЛИЧИИ: ${item.stock}` : '';
+      const canBuy = isRealUser && caps >= item.price;
+      
+      div.innerHTML = `
+        <div class="item-info">
+          <div class="item-name">${item.emoji||''} ${item.name}</div>
+          <div class="item-price">💰 ${item.price} крышек${stockText}</div>
+        </div>
+        <button class="buy-btn" ${!canBuy?'disabled':''} onclick="startBuyItem(${i})">
+          ${isRealUser ? 'КУПИТЬ' : (currentUser === 'ГОСТЬ' ? 'ГОСТЬ' : 'ВОЙДИТЕ')}
+        </button>`;
+      container.appendChild(div);
+    });
+    renderAdminShopList();
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('purchaseHistory');
+    if (!container) return;
+    const currentUser = checkUserStatus();
+    if (!currentUser || currentUser === 'ГОСТЬ') return;
+    const userHistory = purchaseHistory.filter(h => h.user === currentUser).reverse().slice(0, 10);
+    container.innerHTML = userHistory.length ? '' : '<div style="color:#1a6e1a;text-align:center;padding:10px;">НЕТ ПОКУПОК</div>';
+    userHistory.forEach(h => {
+      const div = document.createElement('div'); div.className = 'history-item';
+      div.textContent = `${h.date} — ${h.item} | ${h.delivery} | -${h.total} кр.`;
+      container.appendChild(div);
+    });
+  }
+
+  window.startBuyItem = function(i) {
+    const currentUser = checkUserStatus();
+    if (!currentUser || currentUser === 'ГОСТЬ') { alert('ВОЙДИТЕ ДЛЯ ПОКУПОК!'); return; }
+    pendingPurchaseItem = i;
+    const item = shopItems[i];
+    document.getElementById('deliveryItemName').textContent = (item.emoji||'') + ' ' + item.name + ' — ' + item.price + ' кр.';
+    document.getElementById('deliveryOverlay').classList.remove('hidden');
+  };
+
+  window.selectDelivery = function(type) {
+    const item = shopItems[pendingPurchaseItem];
+    const currentUser = checkUserStatus();
+    const basePrice = item.price;
+    let dc = 0, dn = '';
+    if (type === 'member') { dc = 0; dn = 'Участник О.И.Д.Л.'; }
+    else if (type === 'drone') { dc = 5; dn = 'Дрон-курьер'; }
+    else if (type === 'mercenary') { dc = 15; dn = 'Тихая Лагуна'; }
+    const total = basePrice + dc;
+    const caps = wallets[currentUser] || 0;
+    if (caps < total) { alert('НЕДОСТАТОЧНО КРЫШЕК!'); cancelDelivery(); return; }
+    if (confirm(`Подтвердить?\n\n${item.emoji||''} ${item.name}: ${basePrice} кр.\nДоставка: ${dn} (${dc} кр.)\nИТОГО: ${total} кр.`)) {
+      wallets[currentUser] -= total;
+      if (item.stock > 0) { item.stock--; shopItems[pendingPurchaseItem] = item; db.ref('ki_shop_items').set(shopItems); }
+      purchaseHistory.push({ user: currentUser, item: item.name, basePrice, delivery: dn, deliveryCost: dc, total, date: new Date().toLocaleString('ru-RU') });
+      db.ref('ki_wallets').set(wallets); db.ref('ki_purchaseHistory').set(purchaseHistory);
+      cancelDelivery(); renderShop();
+      alert('✅ ПОКУПКА СОВЕРШЕНА!\nДоставка: ' + dn);
+    }
+  };
+
+  window.cancelDelivery = function() { document.getElementById('deliveryOverlay').classList.add('hidden'); pendingPurchaseItem = null; };
+
+  // АДМИН
+  const adminBtn = document.getElementById('adminShopBtn'), adminPanel = document.getElementById('adminPanel');
+  adminBtn.addEventListener('click', function() {
+    if (!isShopAdmin) {
+      const cmd = prompt('ВВЕДИТЕ КОД АДМИНА:');
+      if (cmd === ADMIN_CODE) { isShopAdmin = true; alert('*** ДОСТУП РАЗРЕШЁН ***'); }
+      else { alert('НЕВЕРНЫЙ КОД'); return; }
+    }
+    adminPanel.classList.remove('hidden'); renderAdminShopList();
+  });
+  document.getElementById('adminClose').addEventListener('click', () => adminPanel.classList.add('hidden'));
+
+  function renderAdminShopList() {
+    const l = document.getElementById('adminShopList'); if (!l) return; l.innerHTML = '';
+    shopItems.forEach((item, i) => { const d = document.createElement('div'); d.className = 'admin-list-item'; d.innerHTML = `<span>${item.emoji||''} ${item.name} — ${item.price} кр.</span><span><button onclick="editShopItem(${i})">РЕД</button><button onclick="deleteShopItem(${i})">УДЛ</button></span>`; l.appendChild(d); });
+  }
+
+  window.editShopItem = function(i) { const item = shopItems[i]; document.getElementById('itemName').value = item.name; document.getElementById('itemEmoji').value = item.emoji||''; document.getElementById('itemPrice').value = item.price; document.getElementById('itemStock').value = item.stock||0; document.getElementById('itemEditIdx').value = i; };
+  window.deleteShopItem = function(i) { if (confirm('Удалить?')) { shopItems.splice(i, 1); db.ref('ki_shop_items').set(shopItems); renderShop(); } };
+
+  document.getElementById('itemSaveBtn').addEventListener('click', () => {
+    const name = document.getElementById('itemName').value.trim(), emoji = document.getElementById('itemEmoji').value.trim();
+    const price = parseInt(document.getElementById('itemPrice').value) || 0, stock = parseInt(document.getElementById('itemStock').value) || 0;
+    if (!name || price <= 0) { alert('ИМЯ И ЦЕНА!'); return; }
+    const data = { name, emoji, price, stock };
+    const ei = parseInt(document.getElementById('itemEditIdx').value);
+    if (ei >= 0 && ei < shopItems.length) shopItems[ei] = data; else shopItems.push(data);
+    db.ref('ki_shop_items').set(shopItems); renderShop();
+    ['itemName','itemEmoji','itemPrice','itemStock'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('itemEditIdx').value = '-1'; alert('СОХРАНЕНО!');
+  });
+
+  loadData();
+</script>
+</body>
+</html>
