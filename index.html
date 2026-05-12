@@ -801,7 +801,7 @@
   });
 
   // АДМИН
-  const ADMIN='pipboy42';
+  const ADMIN='crystal';
   const adminBtn=document.getElementById('adminAccessBtn'), adminBadge=document.getElementById('adminBadge'), adminPanel=document.getElementById('adminPanel');
   function setAdmin(a){ isAdmin=a; adminBtn.classList.toggle('visible',a); adminBadge.classList.toggle('visible',a); if(!a)adminPanel.classList.add('hidden'); }
   adminBtn.addEventListener('click',()=>{ if(!isAdmin)return; adminPanel.classList.remove('hidden'); switchATab('members'); playBeep(); });
